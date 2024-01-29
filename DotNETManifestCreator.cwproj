@@ -1,0 +1,70 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{2A65AE7E-6DD3-4E58-8164-4FB79BD9F872}</ProjectGuid>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">Win32</Platform>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>DotNETManifestCreator</RootNamespace>
+    <AssemblyName>DotNETManifestCreator</AssemblyName>
+    <OutputName>DotNETManifestCreator</OutputName>
+    <CWOutputType>Exe</CWOutputType>
+    <DefineConstants>StringTheoryLinkMode=&gt;1%3bStringTheoryDllMode=&gt;0%3bMD5=&gt;0%3bWinEventLinkMode=&gt;1%3bWinEventDLLMode=&gt;0%3b_ODDJOB_=&gt;1%3b_RASLinkMode_=&gt;1%3b_RASDllMode_=&gt;0%3b_ABCDllMode_=&gt;0%3b_ABCLinkMode_=&gt;1</DefineConstants>
+    <stack_size>16384</stack_size>
+    <CopyCore>True</CopyCore>
+    <Model>Dll</Model>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>True</DebugSymbols>
+    <DebugType>Full</DebugType>
+    <vid>full</vid>
+    <check_stack>True</check_stack>
+    <check_index>True</check_index>
+    <warnings>on</warnings>
+    <GenerateMap>True</GenerateMap>
+    <line_numbers>True</line_numbers>
+    <dynamic_base>True</dynamic_base>
+    <dep>True</dep>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>False</DebugSymbols>
+    <DebugType>None</DebugType>
+    <vid>off</vid>
+    <check_stack>False</check_stack>
+    <check_index>False</check_index>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DotNETManifestCreator.clw">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DotNETManifestCreator001.clw">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DotNETManifestCreator002.clw">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DotNETManifestCreator003.clw">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DotNETManifestCreator004.clw">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DOTNETMANIFESTCREATOR_BC.CLW">
+      <Generated>true</Generated>
+    </Compile>
+    <Compile Include="DotNETManifestCreator_BC0.CLW">
+      <Generated>true</Generated>
+    </Compile>
+    <None Include="zlibwapi.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Generated>True</Generated>
+      <ProjectGenerated>True</ProjectGenerated>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FileDriver Include="TOPSPEED" />
+    <Library Include="DotNETManifestCreator.EXE.manifest" />
+    <Library Include="vuSndKeys.lib" />
+  </ItemGroup>
+  <Import Project="$(ClarionBinPath)\SoftVelocity.Build.Clarion.targets" />
+</Project>
