@@ -178,9 +178,9 @@ ReturnValue          BYTE,AUTO
   ! Restore preserved local variables from non-volatile store
   SourcePath = INIMgr.TryFetch('Main_PreservedVars','SourcePath')
   DestinationPath = INIMgr.TryFetch('Main_PreservedVars','DestinationPath')
-  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
+  SELF.AddItem(Toolbar)
   IF SELF.Request = SelectRecord
      SELF.AddItem(?Close,RequestCancelled)                 ! Add the close control to the window manger
   ELSE
@@ -533,9 +533,9 @@ ReturnValue          BYTE,AUTO
   SELF.FirstField = ?Text1
   SELF.VCRRequest &= VCRRequest
   SELF.Errors &= GlobalErrors                              ! Set this windows ErrorManager to the global ErrorManager
-  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
+  SELF.AddItem(Toolbar)
   IF SELF.Request = SelectRecord
      SELF.AddItem(?Close,RequestCancelled)                 ! Add the close control to the window manger
   ELSE
