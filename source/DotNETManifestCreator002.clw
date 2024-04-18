@@ -12,6 +12,7 @@
                      END
 
 
+  
 !!! <summary>
 !!! Generated from procedure template - Window
 !!! Form Manifests
@@ -22,17 +23,17 @@ StartPos            Long
 EndPos              Long
 ManifestSt          StringTheory
 CurrentTab           STRING(80)                            ! 
+NewOutputPath        STRING(255)                           ! 
 ActionMessage        CSTRING(40)                           ! 
 History::Man:Record  LIKE(Man:RECORD),THREAD
+loc:AnyFontVal string(255)
 QuickWindow          WINDOW('Form Manifests'),AT(,,373,194),FONT('Segoe UI',10,,FONT:regular,CHARSET:ANSI),RESIZE, |
-  AUTO,CENTER,ICON('AppIcon.ico'),GRAY,IMM,HLP('UpdateManifest'),SYSTEM,WALLPAPER('ArcticBlue' & |
+  AUTO,CENTER,ICON('AppIconNoShadow.ico'),GRAY,IMM,HLP('UpdateManifest'),SYSTEM,WALLPAPER('ArcticBlue' & |
   'GradientBackground1600x1084.jpg')
-                       BUTTON('&OK'),AT(208,176,49,14),USE(?OK),LEFT,ICON('WAOK.ICO'),DEFAULT,FLAT,MSG('Accept dat' & |
+                       BUTTON('&OK'),AT(270,176,49,14),USE(?OK),LEFT,ICON('Ok1.ico'),DEFAULT,FLAT,MSG('Accept dat' & |
   'a and close the window'),TIP('Accept data and close the window')
-                       BUTTON('&Cancel'),AT(261,176,49,14),USE(?Cancel),LEFT,ICON('WACANCEL.ICO'),FLAT,MSG('Cancel operation'), |
+                       BUTTON('&Cancel'),AT(322,176,49,14),USE(?Cancel),LEFT,ICON('Cancel1.ico'),FLAT,MSG('Cancel operation'), |
   TIP('Cancel operation')
-                       BUTTON('&Help'),AT(314,176,49,14),USE(?Help),LEFT,ICON('WAHELP.ICO'),FLAT,MSG('See Help Window'), |
-  STD(STD:Help),TIP('See Help Window')
                        ENTRY(@s255),AT(62,35,286,10),USE(Man:InputPath),LEFT(2)
                        PROMPT('Description:'),AT(6,6),USE(?Man:Description:Prompt),TRN
                        ENTRY(@s100),AT(62,6,286,10),USE(Man:Description),LEFT(2)
@@ -44,7 +45,7 @@ QuickWindow          WINDOW('Form Manifests'),AT(,,373,194),FONT('Segoe UI',10,,
                        BUTTON,AT(351,33,12,12),USE(?LookupFile),ICON('Look.ico'),FLAT,TRN
                        BUTTON,AT(351,48,12,12),USE(?LookupFile:2),ICON('Look.ico'),FLAT,TRN
                        TEXT,AT(6,68,365,105),USE(?TEXT1),FONT('Courier New',10),HVSCROLL
-                       BUTTON('Generate'),AT(6,176),USE(?GenerateBtn),FLAT,TRN
+                       BUTTON('Generate'),AT(6,176,46,14),USE(?GenerateBtn),FLAT,TRN
                      END
 
     omit('***',WE::CantCloseNowSetHereDone=1)  !Getting Nested omit compile error, then uncheck the "Check for duplicate CantCloseNowSetHere variable declaration" in the WinEvent local template
@@ -62,6 +63,10 @@ TakeWindowEvent        PROCEDURE(),BYTE,PROC,DERIVED
                      END
 
 Toolbar              ToolbarClass
+! ----- ThisAnyFont --------------------------------------------------------------------------
+ThisAnyFont          Class(AnyFont)
+                     End  ! ThisAnyFont
+! ----- end ThisAnyFont -----------------------------------------------------------------------
 ! ----- csResize --------------------------------------------------------------------------
 csResize             Class(csResizeClass)
     ! derived method declarations
@@ -138,6 +143,7 @@ ReturnValue          BYTE,AUTO
   SELF.AddUpdateFile(Access:Manifests)
   SELF.AddItem(?Cancel,RequestCancelled)                   ! Add the cancel control to the window manager
   Relate:Manifests.Open()                                  ! File Manifests used by this procedure, so make sure it's RelationManager is open
+  Relate:Settings.Open()                                   ! File Settings used by this procedure, so make sure it's RelationManager is open
   SELF.FilesOpened = True
   SELF.Primary &= Relate:Manifests
   IF SELF.Request = ViewRecord AND NOT SELF.BatchProcessing ! Setup actions for ViewOnly Mode
@@ -162,6 +168,23 @@ ReturnValue          BYTE,AUTO
   Alert(AltSpace)       !
   WinAlertMouseZoom()
   WinAlert(WE::WM_QueryEndSession,,Return1+PostUser)
+  ThisAnyFont.PreserveMenubar = 1
+  ThisAnyFont.PreserveToolbar = 1
+  If Band(Anyfont:save,AnyFont:SavedSettingsLoaded) = 0
+    INIMGR.Fetch(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+    INIMGR.Fetch(AnyFont:SaveSection,'Disable',AnyFont:Disable)
+    Anyfont:Save = bor(Anyfont:Save,AnyFont:SavedSettingsLoaded)
+  end
+  if AnyFont:Disable = false
+    ThisAnyFont.AutoWallpaper = prop:stretch
+    ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+  else
+  end
+  ThisAnyFont.SetListStyles()
   IF SELF.Request = ViewRecord                             ! Configure controls for View Only mode
     ?Man:InputPath{PROP:ReadOnly} = True
     ?Man:Description{PROP:ReadOnly} = True
@@ -177,6 +200,7 @@ ReturnValue          BYTE,AUTO
   FileLookup8.ClearOnCancel = True
   FileLookup8.Flags=BOR(FileLookup8.Flags,FILE:LongName)   ! Allow long filenames
   FileLookup8.SetMask('All Files','*.*')                   ! Set the file mask
+  FileLookup8.DefaultDirectory=Set:DefaultInputPath
   FileLookup9.Init
   FileLookup9.ClearOnCancel = True
   FileLookup9.Flags=BOR(FileLookup9.Flags,FILE:LongName)   ! Allow long filenames
@@ -184,6 +208,9 @@ ReturnValue          BYTE,AUTO
   FileLookup9.SetMask('All Files','*.*')                   ! Set the file mask
   csResize.Open()
   SELF.SetAlerts()
+    Set(Settings)
+    Access:Settings.Next()
+  
     If SELF.ChangeAction = Change:Caller
         If Access:Manifests.Fetch(Man:GuidKey) = Level:Benign
             ManifestSt.FromBlob(Man:Manifest)
@@ -201,6 +228,8 @@ ReturnValue          BYTE,AUTO
     If Not Man:GUID
         Man:GUID = Glo:st.MakeGuid()
     End
+  
+    
   RETURN ReturnValue
 
 
@@ -214,10 +243,12 @@ ReturnValue          BYTE,AUTO
   IF ReturnValue THEN RETURN ReturnValue.
   IF SELF.FilesOpened
     Relate:Manifests.Close()
+    Relate:Settings.Close()
   END
   IF SELF.Opened
     INIMgr.Update('UpdateManifest',QuickWindow)            ! Save window data to non-volatile store
   END
+    ThisAnyFont.kill()
   GlobalErrors.SetProcedureName
   RETURN ReturnValue
 
@@ -250,6 +281,7 @@ Looped BYTE
     OF ?GenerateBtn
       !    RUN('mt -managedassemblyname:"'&clip(Man:InputPath)&'" -out:"'&clip(Man:OutputPath)&'"',0)
       !job.CreateProcess('mt','-managedassemblyname:"'&clip(Man:InputPath)&'" -out:"'&clip(Man:OutputPath)&'"',
+      SETPATH(clip(Glo:OriginalPath))
       If job.CreateProcess('mt -nologo -managedassemblyname:"'&clip(Man:InputPath)&'" -out:"'&clip(Man:OutputPath)&'"',jo:SW_HIDE,true,,,,,Glo:st,0,0) <> 0
         Glo:st.Trace(Glo:st.GetValue())
       End
@@ -288,6 +320,11 @@ Looped BYTE
       Man:InputPath = FileLookup8.Ask(1)
       DISPLAY
       SETPATH(clip(Glo:OriginalPath))      
+      
+      !NewOutputPath = ManifestSt.PathOnly(Man:InputPath) & '\'
+      FileLookup9.DefaultDirectory = Glo:st.PathOnly(Man:InputPath) !NewOutputPath
+      
+      !Message(NewOutputPath)
     OF ?LookupFile:2
       ThisWindow.Update()
       Man:OutputPath = FileLookup9.Ask(1)
@@ -374,6 +411,5 @@ csResize.Init   PROCEDURE ()
   SELF.GrabCornerLines() !
   SELF.SetStrategy(?OK,100,100,0,0)
   SELF.SetStrategy(?Cancel,100,100,0,0)
-  SELF.SetStrategy(?Help,100,100,0,0)
   SELF.SetStrategy(?TEXT1,0,0,100,100)
   SELF.SetStrategy(?GenerateBtn,,100,,0)

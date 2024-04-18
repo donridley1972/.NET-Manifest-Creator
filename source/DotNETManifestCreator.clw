@@ -1,10 +1,11 @@
    PROGRAM
 
 
-StringTheory:TemplateVersion equate('3.66')
+StringTheory:TemplateVersion equate('3.67')
 OddJob:TemplateVersion equate('1.45')
 ResizeAndSplit:TemplateVersion equate('5.10')
-WinEvent:TemplateVersion      equate('5.38')
+AnyFont:TemplateVersion equate('1.95')
+WinEvent:TemplateVersion      equate('5.41')
 
    INCLUDE('ABERROR.INC'),ONCE
    INCLUDE('ABFILE.INC'),ONCE
@@ -15,6 +16,7 @@ WinEvent:TemplateVersion      equate('5.38')
   include('StringTheory.Inc'),ONCE
   include('OddJob.Inc'),ONCE
   include('ResizeAndSplit.Inc'),ONCE
+  include('anyfont.inc'),ONCE
     Include('WinEvent.Inc'),Once
 
    MAP
@@ -84,6 +86,16 @@ DefaultOutputPath           STRING(255)                    !
 
 WE::MustClose       long
 WE::CantCloseNow    long
+AnyFont:Fontname    string(31)
+AnyFont:FontSize    long(-1)
+AnyFont:FontColor   long(-1)
+AnyFont:FontStyle   long(-1)
+AnyFont:FontCharset long(-1)
+AnyFont:Save        long(0)
+AnyFont:Disable     bool(false)
+AnyFont:SaveName    string(255)
+AnyFont:SaveSection string(255)
+AnyFont_Enabled     equate(0) ! ActivateAnyFont(AnyFont) (6)
 Access:Manifests     &FileManager,THREAD                   ! FileManager for Manifests
 Relate:Manifests     &RelationManager,THREAD               ! RelationManager for Manifests
 Access:Settings      &FileManager,THREAD                   ! FileManager for Settings
@@ -110,7 +122,16 @@ Destruct               PROCEDURE
   FuzzyMatcher.SetOption(MatchOption:WordOnly, 0)          ! Configure 'word only' matching
   INIMgr.Init('.\DotNETManifestCreator.INI', NVD_INI)      ! Configure INIManager to use INI file
   DctInit()
-  SYSTEM{PROP:Icon} = 'AppIcon.ico'
+  SYSTEM{PROP:Icon} = 'AppIconNoShadow.ico'
+  !-- Inserted by AnyFont
+  AnyFont:FontName    = ''
+  AnyFont:FontSize    = -1
+  AnyFont:FontColor   = -1
+  AnyFont:FontStyle   = -1
+  AnyFont:FontCharset = -1
+  AnyFont:Save        = 1 * AnyFont:SaveInProgramsIni + 1 * AnyFont:SaveSettings
+  AnyFont:SaveName    = ''
+  AnyFont:SaveSection    = 'AnyFont'
     ds_SetOKToEndSessionHandler(address(MyOKToEndSessionHandler))
     ds_SetEndSessionHandler(address(MyEndSessionHandler))
   Main

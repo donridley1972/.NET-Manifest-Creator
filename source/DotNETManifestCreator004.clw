@@ -3,7 +3,6 @@
    MEMBER('DotNETManifestCreator.clw')                     ! This is a MEMBER module
 
 
-   INCLUDE('ABRESIZE.INC'),ONCE
    INCLUDE('ABTOOLBA.INC'),ONCE
    INCLUDE('ABUTIL.INC'),ONCE
    INCLUDE('ABWINDOW.INC'),ONCE
@@ -13,6 +12,7 @@
                      END
 
 
+  
 !!! <summary>
 !!! Generated from procedure template - Window
 !!! Form Settings
@@ -22,19 +22,27 @@ UpdateSettings PROCEDURE
 CurrentTab           STRING(80)                            ! 
 ActionMessage        CSTRING(40)                           ! 
 History::Set:Record  LIKE(Set:RECORD),THREAD
-QuickWindow          WINDOW('Form Settings'),AT(,,366,63),FONT('Segoe UI',10,,FONT:regular,CHARSET:ANSI),RESIZE, |
-  AUTO,CENTER,ICON('AppIcon.ico'),GRAY,IMM,HLP('UpdateSettings'),SYSTEM,WALLPAPER('ArcticBlue' & |
+loc:AnyFontVal string(255)
+QuickWindow          WINDOW('Form Settings'),AT(,,366,119),FONT('Segoe UI',10,,FONT:regular,CHARSET:ANSI),RESIZE, |
+  AUTO,CENTER,ICON('AppIconNoShadow.ico'),GRAY,IMM,HLP('UpdateSettings'),SYSTEM,WALLPAPER('ArcticBlue' & |
   'GradientBackground1600x1084.jpg')
-                       BUTTON('&OK'),AT(259,40,49,14),USE(?OK),LEFT,ICON('WAOK.ICO'),DEFAULT,FLAT,MSG('Accept dat' & |
+                       BUTTON('&OK'),AT(263,100,49,14),USE(?OK),LEFT,ICON('Ok1.ico'),DEFAULT,FLAT,MSG('Accept dat' & |
   'a and close the window'),TIP('Accept data and close the window')
-                       BUTTON('&Cancel'),AT(313,40,49,14),USE(?Cancel),LEFT,ICON('WACANCEL.ICO'),FLAT,MSG('Cancel operation'), |
+                       BUTTON('&Cancel'),AT(316,100,49,14),USE(?Cancel),LEFT,ICON('Cancel1.ico'),FLAT,MSG('Cancel operation'), |
   TIP('Cancel operation')
-                       ENTRY(@s255),AT(88,7,258,10),USE(Set:DefaultInputPath),LEFT(2)
-                       PROMPT('Default Input Path:'),AT(4,7),USE(?Set:DefaultInputPath:Prompt),TRN
-                       PROMPT('Default Output Path:'),AT(4,22),USE(?Set:DefaultOutputPath:Prompt),TRN
-                       ENTRY(@s255),AT(88,22,258,10),USE(Set:DefaultOutputPath),LEFT(2)
-                       BUTTON,AT(350,5,12,12),USE(?LookupFile),ICON('Look.ico'),FLAT,TRN
-                       BUTTON,AT(350,20,12,12),USE(?LookupFile:2),ICON('Look.ico'),FLAT,TRN
+                       SHEET,AT(2,1,363,96),USE(?SettingsSheet)
+                         TAB('Paths'),USE(?PathsTab)
+                           PROMPT('Default Input Path:'),AT(8,18),USE(?Set:DefaultInputPath:Prompt),TRN
+                           PROMPT('Default Output Path:'),AT(8,34),USE(?Set:DefaultOutputPath:Prompt),TRN
+                           ENTRY(@s255),AT(79,17,260,10),USE(Set:DefaultInputPath),LEFT(2)
+                           ENTRY(@s255),AT(79,33,260,10),USE(Set:DefaultOutputPath),LEFT(2)
+                           BUTTON,AT(343,17,12,11),USE(?LookupFile),ICON('Look.ico'),FLAT,TRN
+                           BUTTON,AT(343,33,12,11),USE(?LookupFile:2),ICON('Look.ico'),FLAT,TRN
+                         END
+                         TAB('Appearance'),USE(?AppearanceTab)
+                           BUTTON,AT(9,18,35,24),USE(?FontBtn),ICON('Font.ico'),FLAT,TIP('Update application font')
+                         END
+                       END
                      END
 
     omit('***',WE::CantCloseNowSetHereDone=1)  !Getting Nested omit compile error, then uncheck the "Check for duplicate CantCloseNowSetHere variable declaration" in the WinEvent local template
@@ -52,10 +60,18 @@ TakeWindowEvent        PROCEDURE(),BYTE,PROC,DERIVED
                      END
 
 Toolbar              ToolbarClass
-Resizer              CLASS(WindowResizeClass)
-Init                   PROCEDURE(BYTE AppStrategy=AppStrategy:Resize,BYTE SetWindowMinSize=False,BYTE SetWindowMaxSize=False)
-                     END
-
+! ----- ThisAnyFont --------------------------------------------------------------------------
+ThisAnyFont          Class(AnyFont)
+                     End  ! ThisAnyFont
+! ----- end ThisAnyFont -----------------------------------------------------------------------
+! ----- csResize --------------------------------------------------------------------------
+csResize             Class(csResizeClass)
+    ! derived method declarations
+Fetch                  PROCEDURE (STRING Sect,STRING Ent,*? Val),VIRTUAL
+Update                 PROCEDURE (STRING Sect,STRING Ent,STRING Val),VIRTUAL
+Init                   PROCEDURE (),VIRTUAL
+                     End  ! csResize
+! ----- end csResize -----------------------------------------------------------------------
 FileLookup8          SelectFileClass
 FileLookup9          SelectFileClass
 CurCtrlFeq          LONG
@@ -102,9 +118,9 @@ ReturnValue          BYTE,AUTO
   SELF.FirstField = ?OK
   SELF.VCRRequest &= VCRRequest
   SELF.Errors &= GlobalErrors                              ! Set this windows ErrorManager to the global ErrorManager
+  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
-  SELF.AddItem(Toolbar)
   SELF.HistoryKey = CtrlH
   SELF.AddHistoryFile(Set:Record,History::Set:Record)
   SELF.AddHistoryField(?Set:DefaultInputPath,2)
@@ -136,16 +152,32 @@ ReturnValue          BYTE,AUTO
   Alert(AltSpace)       !
   WinAlertMouseZoom()
   WinAlert(WE::WM_QueryEndSession,,Return1+PostUser)
+  ThisAnyFont.PreserveMenubar = 1
+  ThisAnyFont.PreserveToolbar = 1
+  If Band(Anyfont:save,AnyFont:SavedSettingsLoaded) = 0
+    INIMGR.Fetch(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+    INIMGR.Fetch(AnyFont:SaveSection,'Disable',AnyFont:Disable)
+    Anyfont:Save = bor(Anyfont:Save,AnyFont:SavedSettingsLoaded)
+  end
+  if AnyFont:Disable = false
+    ThisAnyFont.AutoWallpaper = prop:stretch
+    ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+  else
+  end
+  ThisAnyFont.SetListStyles()
   IF SELF.Request = ViewRecord                             ! Configure controls for View Only mode
     ?Set:DefaultInputPath{PROP:ReadOnly} = True
     ?Set:DefaultOutputPath{PROP:ReadOnly} = True
     DISABLE(?LookupFile)
     DISABLE(?LookupFile:2)
+    DISABLE(?FontBtn)
   END
-  Resizer.Init(AppStrategy:Surface,Resize:SetMinSize)      ! Controls like list boxes will resize, whilst controls like buttons will move
-  SELF.AddItem(Resizer)                                    ! Add resizer to window manager
+  csResize.Init('UpdateSettings',QuickWindow,1)
   INIMgr.Fetch('UpdateSettings',QuickWindow)               ! Restore window settings from non-volatile store
-  Resizer.Resize                                           ! Reset required after window size altered by INI manager
   FileLookup8.Init
   FileLookup8.ClearOnCancel = True
   FileLookup8.Flags=BOR(FileLookup8.Flags,FILE:LongName)   ! Allow long filenames
@@ -156,6 +188,7 @@ ReturnValue          BYTE,AUTO
   FileLookup9.Flags=BOR(FileLookup9.Flags,FILE:LongName)   ! Allow long filenames
   FileLookup9.Flags=BOR(FileLookup9.Flags,FILE:Directory)  ! Allow Directory Dialog
   FileLookup9.SetMask('All Files','*.*')                   ! Set the file mask
+  csResize.Open()
   SELF.SetAlerts()
   RETURN ReturnValue
 
@@ -174,6 +207,7 @@ ReturnValue          BYTE,AUTO
   IF SELF.Opened
     INIMgr.Update('UpdateSettings',QuickWindow)            ! Save window data to non-volatile store
   END
+    ThisAnyFont.kill()
   GlobalErrors.SetProcedureName
   RETURN ReturnValue
 
@@ -217,6 +251,36 @@ Looped BYTE
       ThisWindow.Update()
       Set:DefaultOutputPath = FileLookup9.Ask(1)
       DISPLAY
+    OF ?FontBtn
+      ThisWindow.Update()
+      !-------------------------------------------------------------------------------
+      !-- Inserted by AnyFont.
+      if AnyFont:Disable = false
+        if AnyFont:FontName = '' then AnyFont:FontName = target{prop:fontname}.
+        if AnyFont:FontSize = -1 then AnyFont:FontSize = target{prop:fontsize}.
+        if AnyFont:FontColor = -1 then AnyFont:FontColor = target{prop:fontcolor}.
+        if AnyFont:FontStyle = -1 then AnyFont:FontStyle = target{prop:fontStyle}.
+        if AnyFont:FontCharset = -1 then AnyFont:Fontcharset = target{prop:fontCharset}.
+        if FONTDIALOGA('Select Font',AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharSet,0)
+          ThisAnyFont.AutoWallpaper = prop:stretch
+          ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+          if band(Anyfont:Save,AnyFont:SaveSettings + AnyFont:SaveInProgramsIni) = AnyFont:SaveSettings + AnyFont:SaveInProgramsIni
+            INIMGR.Update(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+            INIMGR.Update(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+            INIMGR.Update(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+            INIMGR.Update(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+            INIMGR.Update(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+          elsif band(Anyfont:Save,AnyFont:SaveSettings)=AnyFont:SaveSettings
+            PUTINI(AnyFont:SaveSection,'FontName',AnyFont:FontName,AnyFont:SaveName)
+            PUTINI(AnyFont:SaveSection,'FontSize',AnyFont:FontSize,AnyFont:SaveName)
+            PUTINI(AnyFont:SaveSection,'FontColor',AnyFont:FontColor,AnyFont:SaveName)
+            PUTINI(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle,AnyFont:SaveName)
+            PUTINI(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset,AnyFont:SaveName)
+          end
+          csResize.ResetSetting()
+          csResize.Resize()
+        end
+      end
     END
     RETURN ReturnValue
   END
@@ -230,6 +294,7 @@ ReturnValue          BYTE,AUTO
 
 Looped BYTE
   CODE
+  csResize.TakeEvent()
   LOOP                                                     ! This method receives all events
     IF Looped
       RETURN Level:Notify
@@ -278,11 +343,25 @@ Looped BYTE
   ReturnValue = Level:Fatal
   RETURN ReturnValue
 
-
-Resizer.Init PROCEDURE(BYTE AppStrategy=AppStrategy:Resize,BYTE SetWindowMinSize=False,BYTE SetWindowMaxSize=False)
-
-
+!----------------------------------------------------
+csResize.Fetch   PROCEDURE (STRING Sect,STRING Ent,*? Val)
   CODE
-  PARENT.Init(AppStrategy,SetWindowMinSize,SetWindowMaxSize)
-  SELF.SetParentDefaults()                                 ! Calculate default control parent-child relationships based upon their positions on the window
-
+  INIMgr.Fetch(Sect,Ent,Val)
+  PARENT.Fetch (Sect,Ent,Val)
+!----------------------------------------------------
+csResize.Update   PROCEDURE (STRING Sect,STRING Ent,STRING Val)
+  CODE
+  INIMgr.Update(Sect,Ent,Val)
+  PARENT.Update (Sect,Ent,Val)
+!----------------------------------------------------
+csResize.Init   PROCEDURE ()
+  CODE
+  PARENT.Init ()
+  Self.CornerStyle = Ras:CornerDots
+  SELF.GrabCornerLines() !
+  SELF.SetStrategy(?OK,100,100,0,0)
+  SELF.SetStrategy(?Cancel,100,100,0,0)
+  SELF.SetStrategy(?SettingsSheet,0,0,100,100)
+  SELF.SetStrategy(?LookupFile,100,100,0,0)
+  SELF.SetStrategy(?LookupFile:2,100,100,0,0)
+  SELF.SetStrategy(?FontBtn,100,100,0,0)

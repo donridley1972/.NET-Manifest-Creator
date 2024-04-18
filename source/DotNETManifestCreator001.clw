@@ -11,10 +11,11 @@
                      MAP
                        INCLUDE('DOTNETMANIFESTCREATOR001.INC'),ONCE        !Local module procedure declarations
                        INCLUDE('DOTNETMANIFESTCREATOR002.INC'),ONCE        !Req'd for module callout resolution
-                       INCLUDE('DOTNETMANIFESTCREATOR003.INC'),ONCE        !Req'd for module callout resolution
+                       INCLUDE('DOTNETMANIFESTCREATOR004.INC'),ONCE        !Req'd for module callout resolution
                      END
 
 
+  
 !!! <summary>
 !!! Generated from procedure template - Window
 !!! </summary>
@@ -41,16 +42,17 @@ Man:GUID               LIKE(Man:GUID)                 !Primary key field - type 
 Mark                   BYTE                           !Entry's marked status
 ViewPosition           STRING(1024)                   !Entry's view position
                      END
-Window               WINDOW('.NET Manifest Creator'),AT(,,468,235),FONT('Segoe UI',10),RESIZE,AUTO,ICON('AppIcon.ico'), |
+loc:AnyFontVal string(255)
+Window               WINDOW('.NET Manifest Creator'),AT(,,468,235),FONT('Segoe UI',10),RESIZE,AUTO,ICON('AppIconNoShadow.ico'), |
   GRAY,SYSTEM,WALLPAPER('ArcticBlueGradientBackground1600x1084.jpg'),IMM
-                       BUTTON('Close'),AT(414,210,50,20),USE(?Close),LEFT,ICON('Cancel1.ico'),FLAT
-                       BUTTON,AT(3,210,25,12),USE(?BUTTON1),ICON('gear.ico'),FLAT,TRN
+                       BUTTON('Close'),AT(414,210,50,14),USE(?Close),LEFT,ICON('Cancel1.ico'),FLAT
+                       BUTTON,AT(3,210,26,14),USE(?UpdateSettingsBtn),ICON('gear.ico'),FLAT,TIP('Settings'),TRN
                        SHEET,AT(2,1,464,206),USE(?SHEET1)
                          TAB('General'),USE(?TAB1)
-                           BUTTON('&Insert'),AT(9,167,42,12),USE(?Insert)
-                           BUTTON('&Change'),AT(53,167,42,12),USE(?Change)
-                           BUTTON('&Delete'),AT(99,167,42,12),USE(?Delete)
-                           BUTTON('Edit File'),AT(9,182,50,20),USE(?EditFileBtn),FLAT,TRN
+                           BUTTON,AT(9,167,42,14),USE(?Insert),ICON('AddNew.ico'),FLAT,TIP('New manifest')
+                           BUTTON,AT(54,167,42,14),USE(?Change),ICON('Edit.ico'),FLAT,TIP('Update Manifest')
+                           BUTTON,AT(98,167,42,14),USE(?Delete),ICON('Trash.ico'),FLAT,TIP('Delete manifest')
+                           BUTTON('Edit File'),AT(9,184,63,14),USE(?EditFileBtn),LEFT,ICON('Edit.ico'),FLAT,TRN
                            LIST,AT(8,16,133,148),USE(?List),LEFT(2),HVSCROLL,FORMAT('400L(2)|M~Description~@s100@'),FROM(Queue:Browse), |
   IMM
                            SHEET,AT(145,16,317,149),USE(?SHEET2)
@@ -84,6 +86,10 @@ TakeWindowEvent        PROCEDURE(),BYTE,PROC,DERIVED
                      END
 
 Toolbar              ToolbarClass
+! ----- ThisAnyFont --------------------------------------------------------------------------
+ThisAnyFont          Class(AnyFont)
+                     End  ! ThisAnyFont
+! ----- end ThisAnyFont -----------------------------------------------------------------------
 ! ----- job --------------------------------------------------------------------------
 job                  Class(JobObject)
                      End  ! job
@@ -172,9 +178,9 @@ ReturnValue          BYTE,AUTO
   ! Restore preserved local variables from non-volatile store
   SourcePath = INIMgr.TryFetch('Main_PreservedVars','SourcePath')
   DestinationPath = INIMgr.TryFetch('Main_PreservedVars','DestinationPath')
+  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
-  SELF.AddItem(Toolbar)
   IF SELF.Request = SelectRecord
      SELF.AddItem(?Close,RequestCancelled)                 ! Add the close control to the window manger
   ELSE
@@ -185,12 +191,6 @@ ReturnValue          BYTE,AUTO
   SELF.FilesOpened = True
   BRW5.Init(?List,Queue:Browse.ViewPosition,BRW5::View:Browse,Queue:Browse,Relate:Manifests,SELF) ! Initialize the browse manager
   SELF.Open(Window)                                        ! Open window
-    !Access:Settings.Open()
-    Glo:OriginalPath = Path()
-    Set(Settings)
-    Access:Settings.Next()
-    Glo:DefaultInputPath = Set:DefaultInputPath
-    !Access:Settings.Close()  
   Do DefineListboxStyle
   Alert(AltKeyPressed)  ! WinEvent : These keys cause a program to crash on Windows 7 and Windows 10.
   Alert(F10Key)         !
@@ -200,6 +200,23 @@ ReturnValue          BYTE,AUTO
   Alert(AltSpace)       !
   WinAlertMouseZoom()
   WinAlert(WE::WM_QueryEndSession,,Return1+PostUser)
+  ThisAnyFont.PreserveMenubar = 1
+  ThisAnyFont.PreserveToolbar = 1
+  If Band(Anyfont:save,AnyFont:SavedSettingsLoaded) = 0
+    INIMGR.Fetch(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+    INIMGR.Fetch(AnyFont:SaveSection,'Disable',AnyFont:Disable)
+    Anyfont:Save = bor(Anyfont:Save,AnyFont:SavedSettingsLoaded)
+  end
+  if AnyFont:Disable = false
+    ThisAnyFont.AutoWallpaper = prop:stretch
+    ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+  else
+  end
+  ThisAnyFont.SetListStyles()
   BRW5.Q &= Queue:Browse
   BRW5.AddSortOrder(,)                                     ! Add the sort order for  for sort order 1
   BRW5.AddField(Man:Description,BRW5.Q.Man:Description)    ! Field Man:Description is a hot field or requires assignment from browse
@@ -210,6 +227,16 @@ ReturnValue          BYTE,AUTO
   BRW5.AddToolbarTarget(Toolbar)                           ! Browse accepts toolbar control
   csResize.Open()
   SELF.SetAlerts()
+    If Not Records(Settings)
+        Set:GUID = Glo:st.MakeGuid()
+        Access:Settings.Insert()
+    End
+    !Access:Settings.Open()
+    Glo:OriginalPath = Path()
+    Set(Settings)
+    Access:Settings.Next()
+    Glo:DefaultInputPath = Set:DefaultInputPath
+    !Access:Settings.Close()    
   RETURN ReturnValue
 
 
@@ -232,6 +259,7 @@ ReturnValue          BYTE,AUTO
   ! Save preserved local variables in non-volatile store
   INIMgr.Update('Main_PreservedVars','SourcePath',SourcePath)
   INIMgr.Update('Main_PreservedVars','DestinationPath',DestinationPath)
+    ThisAnyFont.kill()
   GlobalErrors.SetProcedureName
   RETURN ReturnValue
 
@@ -286,10 +314,15 @@ Looped BYTE
     END
   ReturnValue = PARENT.TakeAccepted()
     CASE ACCEPTED()
-    OF ?BUTTON1
+    OF ?UpdateSettingsBtn
       ThisWindow.Update()
-      START(BrowseSettings, 25000)
-      ThisWindow.Reset
+      Set(Settings)
+      !Access:Settings.Next()
+      Next(Settings)
+      GlobalRequest = ChangeRecord
+      UpdateSettings()
+      !START(UpdateSettings, 25000)
+      ThisWindow.Reset      
     OF ?EditFileBtn
       ThisWindow.Update()
       If EXISTS(Clip(Man:OutputPath))
@@ -413,7 +446,7 @@ csResize.Init   PROCEDURE ()
   Self.CornerStyle = Ras:CornerDots
   SELF.GrabCornerLines() !
   SELF.SetStrategy(?Close,100,100,0,0)
-  SELF.SetStrategy(?BUTTON1,,100,,0)
+  SELF.SetStrategy(?UpdateSettingsBtn,,100,,0)
   SELF.SetStrategy(?SHEET1,0,0,100,100)
   SELF.SetStrategy(?Insert,,100,,0)
   SELF.SetStrategy(?Change,,100,,0)
@@ -435,6 +468,7 @@ BRW5.Init PROCEDURE(SIGNED ListBox,*STRING Posit,VIEW V,QUEUE Q,RelationManager 
     SELF.DeleteControl=?Delete
   END
 
+  
 !!! <summary>
 !!! Generated from procedure template - Window
 !!! </summary>
@@ -442,7 +476,8 @@ EditManifest PROCEDURE (string pFilePath)
 
 st              StringTheory
 TheManifest          STRING(10000)                         ! 
-Window               WINDOW('Edit Manifest'),AT(,,365,220),FONT('Segoe UI',10),RESIZE,AUTO,ICON('AppIcon.ico'), |
+loc:AnyFontVal string(255)
+Window               WINDOW('Edit Manifest'),AT(,,365,220),FONT('Segoe UI',10),RESIZE,AUTO,ICON('AppIconNoShadow.ico'), |
   GRAY,SYSTEM,TOOLBOX,WALLPAPER('ArcticBlueGradientBackground1600x1084.jpg'),IMM
                        TEXT,AT(2,2,360,193),USE(?Text1),FONT('Courier New'),HVSCROLL,FLAT
                        BUTTON('Save Changes'),AT(2,198,74,20),USE(?SaveChangesBtn),LEFT,ICON('Ok1.ico'),FLAT
@@ -462,6 +497,10 @@ TakeWindowEvent        PROCEDURE(),BYTE,PROC,DERIVED
                      END
 
 Toolbar              ToolbarClass
+! ----- ThisAnyFont --------------------------------------------------------------------------
+ThisAnyFont          Class(AnyFont)
+                     End  ! ThisAnyFont
+! ----- end ThisAnyFont -----------------------------------------------------------------------
 ! ----- csResize --------------------------------------------------------------------------
 csResize             Class(csResizeClass)
     ! derived method declarations
@@ -494,9 +533,9 @@ ReturnValue          BYTE,AUTO
   SELF.FirstField = ?Text1
   SELF.VCRRequest &= VCRRequest
   SELF.Errors &= GlobalErrors                              ! Set this windows ErrorManager to the global ErrorManager
+  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
-  SELF.AddItem(Toolbar)
   IF SELF.Request = SelectRecord
      SELF.AddItem(?Close,RequestCancelled)                 ! Add the close control to the window manger
   ELSE
@@ -515,6 +554,23 @@ ReturnValue          BYTE,AUTO
   Alert(AltSpace)       !
   WinAlertMouseZoom()
   WinAlert(WE::WM_QueryEndSession,,Return1+PostUser)
+  ThisAnyFont.PreserveMenubar = 1
+  ThisAnyFont.PreserveToolbar = 1
+  If Band(Anyfont:save,AnyFont:SavedSettingsLoaded) = 0
+    INIMGR.Fetch(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+    INIMGR.Fetch(AnyFont:SaveSection,'Disable',AnyFont:Disable)
+    Anyfont:Save = bor(Anyfont:Save,AnyFont:SavedSettingsLoaded)
+  end
+  if AnyFont:Disable = false
+    ThisAnyFont.AutoWallpaper = prop:stretch
+    ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+  else
+  end
+  ThisAnyFont.SetListStyles()
   csResize.Init('EditManifest',Window,1)
   INIMgr.Fetch('EditManifest',Window)                      ! Restore window settings from non-volatile store
   csResize.Open()
@@ -537,6 +593,7 @@ ReturnValue          BYTE,AUTO
   IF SELF.Opened
     INIMgr.Update('EditManifest',Window)                   ! Save window data to non-volatile store
   END
+    ThisAnyFont.kill()
   GlobalErrors.SetProcedureName
   RETURN ReturnValue
 

@@ -15,6 +15,7 @@
                      END
 
 
+  
 !!! <summary>
 !!! Generated from procedure template - Window
 !!! Browse the Settings file
@@ -34,6 +35,7 @@ Set:GUID               LIKE(Set:GUID)                 !Primary key field - type 
 Mark                   BYTE                           !Entry's marked status
 ViewPosition           STRING(1024)                   !Entry's view position
                      END
+loc:AnyFontVal string(255)
 QuickWindow          WINDOW('Browse the Settings file'),AT(,,350,166),FONT('Segoe UI',10,,FONT:regular,CHARSET:ANSI), |
   RESIZE,AUTO,CENTER,ICON('AppIcon.ico'),GRAY,IMM,HLP('BrowseSettings'),SYSTEM,WALLPAPER('ArcticBlue' & |
   'GradientBackground1600x1084.jpg')
@@ -65,6 +67,10 @@ TakeWindowEvent        PROCEDURE(),BYTE,PROC,DERIVED
                      END
 
 Toolbar              ToolbarClass
+! ----- ThisAnyFont --------------------------------------------------------------------------
+ThisAnyFont          Class(AnyFont)
+                     End  ! ThisAnyFont
+! ----- end ThisAnyFont -----------------------------------------------------------------------
 BRW1                 CLASS(BrowseClass)                    ! Browse using ?Browse:1
 Q                      &Queue:Browse:1                !Reference to browse queue
 Init                   PROCEDURE(SIGNED ListBox,*STRING Posit,VIEW V,QUEUE Q,RelationManager RM,WindowManager WM)
@@ -100,9 +106,9 @@ ReturnValue          BYTE,AUTO
   SELF.FirstField = ?Browse:1
   SELF.VCRRequest &= VCRRequest
   SELF.Errors &= GlobalErrors                              ! Set this windows ErrorManager to the global ErrorManager
+  SELF.AddItem(Toolbar)
   CLEAR(GlobalRequest)                                     ! Clear GlobalRequest after storing locally
   CLEAR(GlobalResponse)
-  SELF.AddItem(Toolbar)
   IF SELF.Request = SelectRecord
      SELF.AddItem(?Close,RequestCancelled)                 ! Add the close control to the window manger
   ELSE
@@ -121,6 +127,23 @@ ReturnValue          BYTE,AUTO
   Alert(AltSpace)       !
   WinAlertMouseZoom()
   WinAlert(WE::WM_QueryEndSession,,Return1+PostUser)
+  ThisAnyFont.PreserveMenubar = 1
+  ThisAnyFont.PreserveToolbar = 1
+  If Band(Anyfont:save,AnyFont:SavedSettingsLoaded) = 0
+    INIMGR.Fetch(AnyFont:SaveSection,'FontName',AnyFont:FontName)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontSize',AnyFont:FontSize)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontColor',AnyFont:FontColor)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontStyle',AnyFont:FontStyle)
+    INIMGR.Fetch(AnyFont:SaveSection,'FontCharset',AnyFont:FontCharset)
+    INIMGR.Fetch(AnyFont:SaveSection,'Disable',AnyFont:Disable)
+    Anyfont:Save = bor(Anyfont:Save,AnyFont:SavedSettingsLoaded)
+  end
+  if AnyFont:Disable = false
+    ThisAnyFont.AutoWallpaper = prop:stretch
+    ThisAnyFont.SetWindow(AnyFont:FontName,AnyFont:FontSize,AnyFont:FontColor,AnyFont:FontStyle,AnyFont:FontCharset,0)
+  else
+  end
+  ThisAnyFont.SetListStyles()
   BRW1.Q &= Queue:Browse:1
   BRW1::Sort0:StepClass.Init(+ScrollSort:AllowAlpha,ScrollBy:Runtime) ! Moveable thumb based upon Set:GUID for sort order 1
   BRW1.AddSortOrder(BRW1::Sort0:StepClass,Set:GuidKey)     ! Add the sort order for Set:GuidKey for sort order 1
@@ -152,6 +175,7 @@ ReturnValue          BYTE,AUTO
   IF SELF.Opened
     INIMgr.Update('BrowseSettings',QuickWindow)            ! Save window data to non-volatile store
   END
+    ThisAnyFont.kill()
   GlobalErrors.SetProcedureName
   RETURN ReturnValue
 
